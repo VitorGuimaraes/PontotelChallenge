@@ -1,29 +1,75 @@
 import requests
 import json
-from flask import Flask, render_template
+from flask import Flask, render_template, request
+from flask_wtf import Form 
+from wtforms import SelectField, TextAreaField, SubmitField, FloatField
+from wtforms import validators, ValidationError
+import psycopg2
+from collections import namedtuple
 import time
 
 app = Flask(__name__)
+API_KEY = "C7SE1KQ40TQ82QNZ"
 
-API_KEY = "Q0X3O4K2KMPKLQJW"
+Company = namedtuple("Company", "name close")
+companies = []
 
-def request_bovespa():
+best_companies = [("Magazine Luiza", "MGLU3"), ("Gol Linhas Aereas", "GOLL4"), 
+                  ("Usinas Siderúrgicas de Minas Gerais", "USIM5"), 
+                  ("Bradespar", "BRAP4"), ("Eletrobras", "ELET3"), 
+                  ("Rumo", "RAIL3"), ("Localiza Rent a Car", "RENT3"), 
+                  ("Banco do Brasil", "BBAS3"), ("Vale S.A", "VALE3"), 
+                  ("Gerdau", "GOAU4")]
+
+def do_request(symbol):
     try:
-        req = requests.get("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=BOVA11.SAO&interval=1min&apikey=" + API_KEY)
+        req = requests.get("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=" 
+            + symbol + ".SAO&interval=1min&apikey=" + API_KEY)
+        
         response = json.loads(req.text)
         return response
 
     except Exception as e:
-        print("Requisição deu erro: {}".format(e))
+        print("A requisição deu erro: {}".format(e))
 
+@app.route('/result', methods = ['POST', 'GET'])
+def store_companies():
+    
+    if request.method == 'POST':
+        result = request.form
+        company_input = result["Company"]
+
+        # Filter string 
+        company_input = company_input.lower()
+        company_input = company_input.replace(" ", "")
+
+    for company in best_companies:
+        
+        search = company[0].lower()
+        search = search.replace(" ", "")
+        
+        print(company_input, search)
+
+        if company_input in search:  
+            
+            company_data = do_request(company[1])
+            handler = company_data["Meta Data"]["3. Last Refreshed"]
+            
+            close = company_data["Time Series (1min)"][handler]["4. close"]    
+            print(company[0], close)
+            
+            result = {company[0]: close} 
+
+            return render_template("result.html", result = result)
+        
 @app.route("/")
 def render_html():
-    bovespa = request_bovespa()
+    ibovespa = do_request("BOVA11")
     
-    last_refreshed = bovespa["Meta Data"]["3. Last Refreshed"]
-    last_close = bovespa["Time Series (1min)"][last_refreshed]["4. close"]
+    last_refreshed = ibovespa["Meta Data"]["3. Last Refreshed"]
+    last_close = ibovespa["Time Series (1min)"][last_refreshed]["4. close"]
 
-    return render_template("bovespa.html", value = last_close)
+    return render_template("bovespa.html", value = last_close, data = best_companies)
 
 if __name__ == '__main__':
     app.run(debug = True)

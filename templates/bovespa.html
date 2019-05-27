@@ -1,4 +1,23 @@
-<html>
-  <h1>Bovespa Points</h1>
-  <p>Last cotation {{ value }}!</p>
+<!DOCTYPE html> 
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8"/> 
+</head>
+
+<body>
+    <h1>Bovespa Points</h1>
+    <p>Last Bovespa cotation: {{ value }}!</p>
+
+    <p> Companies: </p> 
+    {% for item in data %}
+      <p> {{ item[0] }} </p>
+    {% endfor %}
+
+    <form action = "http://localhost:5000/result" method = "POST">
+      <p>Company <input type = "text" name = "Company" /></p>
+      <p><input type = "submit" value = "submit" /></p>
+    </form>
+
+</body>
+
 </html>
