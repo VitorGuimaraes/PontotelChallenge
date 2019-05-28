@@ -1,14 +1,13 @@
 import requests
 import json
-from flask import Flask, render_template, request
-from flask_wtf import Form 
-from wtforms import SelectField, TextAreaField, SubmitField, FloatField
-from wtforms import validators, ValidationError
-import psycopg2
-from collections import namedtuple
 import time
 
+from flask import Flask, render_template, request
+from collections import namedtuple
+from forms import CompanyForm 
+
 app = Flask(__name__)
+app.secret_key = "development key"
 API_KEY = "C7SE1KQ40TQ82QNZ"
 
 Company = namedtuple("Company", "name close")
@@ -31,13 +30,15 @@ def do_request(symbol):
 
     except Exception as e:
         print("A requisição deu erro: {}".format(e))
-
-@app.route('/result', methods = ['POST', 'GET'])
+        
+@app.route("/result", methods = ["POST", "GET"])
 def store_companies():
     
-    if request.method == 'POST':
+    if request.method == "POST":
         result = request.form
-        company_input = result["Company"]
+        print("Trying to print:")
+
+        company_input = result["name"]
 
         # Filter string 
         company_input = company_input.lower()
@@ -47,29 +48,39 @@ def store_companies():
         
         search = company[0].lower()
         search = search.replace(" ", "")
-        
-        print(company_input, search)
 
         if company_input in search:  
             
             company_data = do_request(company[1])
             handler = company_data["Meta Data"]["3. Last Refreshed"]
             
-            close = company_data["Time Series (1min)"][handler]["4. close"]    
-            print(company[0], close)
-            
+            close = company_data["Time Series (1min)"][handler]["4. close"]               
             result = {company[0]: close} 
 
             return render_template("result.html", result = result)
-        
-@app.route("/")
-def render_html():
+
+def get_ibovespa():
+
     ibovespa = do_request("BOVA11")
     
+    time = ibovespa["Meta Data"]["3. Last Refreshed"]
     last_refreshed = ibovespa["Meta Data"]["3. Last Refreshed"]
     last_close = ibovespa["Time Series (1min)"][last_refreshed]["4. close"]
 
-    return render_template("bovespa.html", value = last_close, data = best_companies)
+    return last_close
+
+@app.route("/")
+def render_html():
+
+    form = CompanyForm()
+
+    if request.method == "POST":
+        if form.validate() == False:
+            flash("Preencha o campo!")
+            return render_template("bovespa.html", form = form)
+
+    actual_cotation = get_ibovespa()
+    return render_template("bovespa.html", value = actual_cotation, data = best_companies, form = form)
 
 if __name__ == '__main__':
-    app.run(debug = True)
+    app.run('localhost', port = 5000, debug = True)
