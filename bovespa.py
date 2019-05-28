@@ -26,6 +26,7 @@ def do_request(symbol):
             + symbol + ".SAO&interval=1min&apikey=" + API_KEY)
         
         response = json.loads(req.text)
+
         return response
 
     except Exception as e:
@@ -36,7 +37,6 @@ def store_companies():
     
     if request.method == "POST":
         result = request.form
-        print("Trying to print:")
 
         company_input = result["name"]
 
